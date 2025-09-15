@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="sampler_options">
+        <item>euler_a</item>
+        <item>dpmpp_2m_sde</item>
+        <item>dpmpp_3m_sde</item>
+    </string-array>
+
+    <string-array name="scheduler_options">
+        <item>Simple</item>
+        <item>Beta</item>
+    </string-array>
+</resources>
