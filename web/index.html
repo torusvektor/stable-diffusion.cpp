@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfection Amateur ILXL - AI Image Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="min-h-screen gradient-bg" id="vanta-bg">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-12" data-aos="fade-down">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Perfection Amateur ILXL</h1>
+            <p class="text-xl text-white opacity-90">Advanced SDXL Image Generation Interface</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Settings Panel -->
+            <div class="lg:col-span-1 glass-effect rounded-2xl p-6" data-aos="fade-right">
+                <h2 class="text-2xl font-semibold text-white mb-6">Generation Settings</h2>
+
+                <!-- Model Selection -->
+                <div class="mb-6">
+                    <label class="block text-white mb-2">Checkpoint Model</label>
+                    <select id="model" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white">
+                        <option value="perfectionAmateurILXL_30.safetensors">perfectionAmateurILXL_30.safetensors</option>
+                    </select>
+                </div>
+
+                <!-- LoRA Selection -->
+                <div class="mb-6">
+                    <label class="block text-white mb-2">DMD2 LoRA</label>
+                    <div id="loras" class="space-y-2">
+                        <label class="flex items-center text-white">
+                            <input type="checkbox" class="mr-2" value="dmd2_sdxl_4step_lora.safetensors" checked>
+                            dmd2_sdxl_4step_lora.safetensors (FP32)
+                        </label>
+                        <label class="flex items-center text-white">
+                            <input type="checkbox" class="mr-2" value="dmd2_sdxl_4step_lora_fp16.safetensors" checked>
+                            dmd2_sdxl_4step_lora_fp16.safetensors (FP16)
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <label class="block text-white mb-2">LoRA Weight</label>
+                        <input id="lora-weight" type="range" min="0" max="1" step="0.1" value="0.7" class="w-full">
+                        <span class="text-white text-sm">0.7</span>
+                    </div>
+                </div>
+
+                <!-- NSFW Toggle -->
+                <div class="mb-6">
+                    <label class="block text-white mb-2">Content Type</label>
+                    <label class="nsfw-toggle">
+                        <input type="checkbox">
+                        <span class="nsfw-slider"></span>
+                    </label>
+                    <span class="ml-3 text-white">NSFW Content</span>
+                </div>
+
+                <!-- Prompt Input -->
+                <div class="mb-6">
+                    <label class="block text-white mb-2">Positive Prompt</label>
+                    <textarea id="positive-prompt" class="w-full prompt-input bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white" placeholder="Describe your image..."></textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-white mb-2">Negative Prompt</label>
+                    <textarea id="negative-prompt" class="w-full prompt-input bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white" placeholder="What to avoid..."></textarea>
+                </div>
+
+                <!-- Generation Settings -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-white mb-2">Steps</label>
+                        <input id="steps" type="number" value="30" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">CFG Scale</label>
+                        <input id="cfg-scale" type="number" value="3.0" step="0.1" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-white mb-2">Sampler</label>
+                        <select id="sampler" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white">
+                            <option value="dpmpp_3m_sde">DPM++ 3M SDE</option>
+                            <option value="dpmpp_2m_sde">DPM++ 2M SDE</option>
+                            <option value="euler_a">Euler a</option>
+                            <option value="lcm">LCM</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Scheduler</label>
+                        <select id="scheduler" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-4 py-2 text-white">
+                            <option value="simple">Simple</option>
+                            <option value="beta">Beta</option>
+                            <option value="normal">Normal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hi-Res Fix Settings -->
+                <div class="mb-6">
+                    <label class="flex items-center text-white mb-2">
+                        <input id="hires-fix" type="checkbox" class="mr-2" checked>
+                        Enable Hi-Res Fix
+                    </label>
+                    <div class="ml-6 mt-2 space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-white text-sm">Steps</label>
+                                <input id="hires-steps" type="number" value="16" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-2 py-1 text-white text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-white text-sm">CFG</label>
+                                <input id="hires-cfg" type="number" value="4.0" step="0.1" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-2 py-1 text-white text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-white text-sm">Denoise</label>
+                            <input id="denoise" type="number" value="0.35" step="0.05" class="w-full bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg px-2 py-1 text-white text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <button id="generate-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                    Generate Image
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="lg:col-span-2">
+                <!-- Current Generation -->
+                <div class="glass-effect rounded-2xl p-6 mb-8" data-aos="fade-left">
+                    <h2 class="text-2xl font-semibold text-white mb-4">Current Generation</h2>
+                    <div id="image-container" class="aspect-square bg-black bg-opacity-30 rounded-lg flex items-center justify-center">
+                        <div class="text-center text-white opacity-70">
+                            <i data-feather="image" class="w-16 h-16 mx-auto mb-2"></i>
+                            <p>Image will appear here after generation</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-4">
+                        <button id="save-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            <i data-feather="download" class="w-4 h-4 inline mr-2"></i>
+                            Save Image
+                        </button>
+                        <button id="regenerate-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                            <i data-feather="repeat" class="w-4 h-4 inline mr-2"></i>
+                            Regenerate
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Generation History -->
+                <div class="glass-effect rounded-2xl p-6" data-aos="fade-up">
+                    <h2 class="text-2xl font-semibold text-white mb-4">Generation History</h2>
+                    <div class="result-grid">
+                        <!-- History items will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        // Initialize Vanta.js background
+        VANTA.GLOBE({
+            el: "#vanta-bg",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x764ba2,
+            backgroundColor: 0x667eea,
+            size: 0.8
+        });
+
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+
+        // Initialize Feather Icons
+        feather.replace();
+
+        // Slider value display
+        document.querySelector('input[type="range"]').addEventListener('input', function() {
+            this.nextElementSibling.textContent = this.value;
+        });
+    </script>
+</body>
+</html>
