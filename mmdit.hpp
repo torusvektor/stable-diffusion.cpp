@@ -801,9 +801,19 @@ public:
         // return: [N, N*W, patch_size * patch_size * out_channels]
         auto final_layer = std::dynamic_pointer_cast<FinalLayer>(blocks["final_layer"]);
 
+        std::vector<bool> is_skip;
+        if (skip_layers.size() > 0) {
+            is_skip.resize(depth, false);
+            for (int i : skip_layers) {
+                if (i >= 0 && i < is_skip.size()) {
+                    is_skip[i] = true;
+                }
+            }
+        }
+
         for (int i = 0; i < depth; i++) {
             // skip iteration if i is in skip_layers
-            if (skip_layers.size() > 0 && std::find(skip_layers.begin(), skip_layers.end(), i) != skip_layers.end()) {
+            if (is_skip.size() > 0 && is_skip[i]) {
                 continue;
             }
 

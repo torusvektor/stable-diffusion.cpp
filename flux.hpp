@@ -764,8 +764,18 @@ namespace Flux {
 
             txt = txt_in->forward(ctx, txt);
 
+            std::vector<bool> is_skip;
+            if (skip_layers.size() > 0) {
+                is_skip.resize(params.depth + params.depth_single_blocks, false);
+                for (int i : skip_layers) {
+                    if (i >= 0 && i < is_skip.size()) {
+                        is_skip[i] = true;
+                    }
+                }
+            }
+
             for (int i = 0; i < params.depth; i++) {
-                if (skip_layers.size() > 0 && std::find(skip_layers.begin(), skip_layers.end(), i) != skip_layers.end()) {
+                if (is_skip.size() > 0 && is_skip[i]) {
                     continue;
                 }
 
@@ -778,7 +788,7 @@ namespace Flux {
 
             auto txt_img = ggml_concat(ctx, txt, img, 1);  // [N, n_txt_token + n_img_token, hidden_size]
             for (int i = 0; i < params.depth_single_blocks; i++) {
-                if (skip_layers.size() > 0 && std::find(skip_layers.begin(), skip_layers.end(), i + params.depth) != skip_layers.end()) {
+                if (is_skip.size() > 0 && is_skip[i + params.depth]) {
                     continue;
                 }
                 auto block = std::dynamic_pointer_cast<SingleStreamBlock>(blocks["single_blocks." + std::to_string(i)]);
