@@ -1520,7 +1520,8 @@ struct PickleTensorReader {
 ggml_type PickleTensorReader::global_type = GGML_TYPE_F32;  // all pickle_tensors data type
 bool PickleTensorReader::read_global_type = false;
 
-int find_char(uint8_t* buffer, int len, char c) {
+int find_char(uint8_t* buffer, uint8_t* buffer_end, int max_len, char c) {
+    int len = std::min(max_len, (int)(buffer_end - buffer));
     for (int pos = 0; pos < len; pos++) {
         if (buffer[pos] == c) {
             return pos;
@@ -1537,6 +1538,9 @@ bool ModelLoader::parse_data_pkl(uint8_t* buffer,
                                  std::string dir,
                                  size_t file_index,
                                  const std::string prefix) {
+    if (buffer_size < 2) {
+        return false;
+    }
     uint8_t* buffer_end = buffer + buffer_size;
     if (buffer[0] == 0x80) {  // proto
         if (buffer[1] != 2) {
@@ -1562,12 +1566,18 @@ bool ModelLoader::parse_data_pkl(uint8_t* buffer,
                 case 'h':  // BINGET         = b'h'   #   "    "    "    "   "   "  ;   "    " 1-byte arg
                 case 'q':  // BINPUT         = b'q'   #   "     "    "   "   " ;   "    " 1-byte arg
                 case 'Q':  // BINPERSID      = b'Q'   #  "       "         "  ;  "  "   "     "  stack
+                    if (buffer >= buffer_end)
+                        return false;
                     buffer++;
                     break;
                 case 'r':  // LONG_BINPUT    = b'r'   #   "     "    "   "   " ;   "    " 4-byte arg
+                    if (buffer + 4 > buffer_end)
+                        return false;
                     buffer += 4;
                     break;
                 case 0x95:  // FRAME            = b'\x95'  # indicate the beginning of a new frame
+                    if (buffer + 8 > buffer_end)
+                        return false;
                     buffer += 8;
                     break;
                 case 0x94:  // MEMOIZE          = b'\x94'  # store top of the stack in memo
@@ -1576,32 +1586,48 @@ bool ModelLoader::parse_data_pkl(uint8_t* buffer,
                     break;
                 case 'K':  // BININT1        = b'K'   # push 1-byte unsigned int
                 {
+                    if (buffer >= buffer_end)
+                        return false;
                     uint8_t value = *buffer;
                     if (reader.read_int_value(value)) {
+                        if (buffer + 1 >= buffer_end)
+                            return false;
                         buffer++;
                     }
                     buffer++;
                 } break;
                 case 'M':  // BININT2        = b'M'   # push 2-byte unsigned int
                 {
+                    if (buffer + 2 > buffer_end)
+                        return false;
                     uint16_t value = read_short(buffer);
                     if (reader.read_int_value(value)) {
+                        if (buffer + 2 >= buffer_end)
+                            return false;
                         buffer++;
                     }
                     buffer += 2;
                 } break;
                 case 'J':  // BININT         = b'J'   # push four-byte signed int
                 {
+                    if (buffer + 4 > buffer_end)
+                        return false;
                     const int32_t value = read_int(buffer);
                     if (reader.read_int_value(value)) {
+                        if (buffer + 4 >= buffer_end)
+                            return false;
                         buffer++;  // skip tuple after read num_elements
                     }
                     buffer += 4;
                 } break;
                 case 'X':  // BINUNICODE     = b'X'   #   "     "       "  ; counted UTF-8 string argument
                 {
+                    if (buffer + 4 > buffer_end)
+                        return false;
                     const int32_t len = read_int(buffer);
                     buffer += 4;
+                    if (len < 0 || buffer + len > buffer_end)
+                        return false;
                     memset(string_buffer, 0, MAX_STRING_BUFFER);
                     if (len > MAX_STRING_BUFFER) {
                         LOG_WARN("tensor name very large");
@@ -1612,22 +1638,30 @@ bool ModelLoader::parse_data_pkl(uint8_t* buffer,
                 } break;
                 case 0x8C:  // SHORT_BINUNICODE = b'\x8c'  # push short string; UTF-8 length < 256 bytes
                 {
-                    const int8_t len = *buffer;
+                    if (buffer >= buffer_end)
+                        return false;
+                    const uint8_t len = *buffer;
                     buffer++;
+                    if (buffer + len > buffer_end)
+                        return false;
                     memset(string_buffer, 0, MAX_STRING_BUFFER);
-                    memcpy(string_buffer, buffer, len);
+                    memcpy(string_buffer, buffer, len < MAX_STRING_BUFFER ? len : (MAX_STRING_BUFFER - 1));
                     buffer += len;
                     // printf("String: '%s'\n", string_buffer);
                 } break;
                 case 'c':  // GLOBAL         = b'c'   # push self.find_class(modname, name); 2 string args
                 {
-                    int len = find_char(buffer, MAX_STRING_BUFFER, '\n');
+                    int len = find_char(buffer, buffer_end, MAX_STRING_BUFFER, '\n');
+                    if (len == -1 || buffer + len + 1 > buffer_end)
+                        return false;
 
                     buffer += len + 1;
-                    len = find_char(buffer, MAX_STRING_BUFFER, '\n');
+                    len = find_char(buffer, buffer_end, MAX_STRING_BUFFER, '\n');
+                    if (len == -1 || buffer + len + 1 > buffer_end)
+                        return false;
 
                     memset(string_buffer, 0, MAX_STRING_BUFFER);
-                    memcpy(string_buffer, buffer, len);
+                    memcpy(string_buffer, buffer, len < MAX_STRING_BUFFER ? len : (MAX_STRING_BUFFER - 1));
                     buffer += len + 1;
                     reader.read_global(string_buffer);
                 } break;
